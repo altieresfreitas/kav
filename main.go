@@ -38,7 +38,7 @@ func getNetworkValidator() *AdmissionValidator {
 }
 
 func getNetworkPolicy() *networkingv1.NetworkPolicy {
-	var policyFile = "/home/asfreitas/config.yaml" //flags.Configfile
+	var policyFile = "" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
 	if err != nil {
