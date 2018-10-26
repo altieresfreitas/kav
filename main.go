@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func getNetworkValidator() *AdmissionValidator {
+func getNetworkValidator() *NetworkAdmissionValidator {
 	var policyFile = "" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
@@ -31,14 +31,14 @@ func getNetworkValidator() *AdmissionValidator {
 		fmt.Println(err)
 	}
 
-	policy := &AdmissionValidator{}
+	policy := &NetworkAdmissionValidator{}
 	json.Unmarshal(jsonFile, &policy)
 
 	return policy
 }
 
 func getNetworkPolicy() *networkingv1.NetworkPolicy {
-	var policyFile = "/home/asfreitas/config.yaml" //flags.Configfile
+	var policyFile = "" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
 	if err != nil {
@@ -64,8 +64,13 @@ func getNetworkPolicy() *networkingv1.NetworkPolicy {
 
 func main() {
 
-	//a := getNetworkPolicy()
+	a := getNetworkPolicy()
 	b := getNetworkValidator()
 
-	fmt.Println(b.NetworkValidator.IPBlock.Cidr.Rules)
+	if ok, err := b.IsValid(a); !ok {
+
+		fmt.Println(err)
+
+	}
+
 }
