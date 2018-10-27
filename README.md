@@ -1,1 +1,1 @@
-# networkpolicy-admission
+# k8s-admission-control
