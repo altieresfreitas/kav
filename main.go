@@ -12,7 +12,7 @@ import (
 )
 
 func getNetworkValidator() *NetworkAdmissionValidator {
-	var policyFile = "" //flags.Configfile
+	var policyFile = "/home/asfreitas/validator.yaml" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
 	if err != nil {
@@ -38,7 +38,7 @@ func getNetworkValidator() *NetworkAdmissionValidator {
 }
 
 func getNetworkPolicy() *networkingv1.NetworkPolicy {
-	var policyFile = "" //flags.Configfile
+	var policyFile = "/home/asfreitas/config.yaml" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
 	if err != nil {

@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"regexp"
-
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,16 +38,31 @@ func (v *NetworkAdmissionValidator) IsValid(p *networkingv1.NetworkPolicy) (bool
 
 }
 
+// PolicyType is a List of allowed Policies type, e.g Ingress or Egress
+type PolicyType networkingv1.PolicyType
+
+const (
+	// PolicyTypeIngress is a NetworkPolicy that affects ingress traffic on selected pods
+	PolicyTypeIngress PolicyType = "Ingress"
+	// PolicyTypeEgress is a NetworkPolicy that affects egress traffic on selected pods
+	PolicyTypeEgress PolicyType = "Egress"
+)
+
 // NetworkPolicyValidator provides the specification of a NetworkPolicy
 type NetworkPolicyValidator struct {
 	Namespace   string                   `json:"namespace,omitempty"`
 	Ingress     NetworkPolicyIngressRule `json:"ingress,omitempty"`
 	Egress      NetworkPolicyEgressRule  `json:"egress,omitempty"`
+	PolicyTypes []PolicyType             `json:"policyTypes,omitempty"`
 	PodSelector PodSelector              `json:"podSelector,omitempty"`
 }
 
 func (v *NetworkPolicyValidator) isValid(p *networkingv1.NetworkPolicySpec) (bool, error) {
 
+	/* 	if ok, err := v.isValidPolicyTypes(&p.PolicyTypes); !ok {
+	   		return false, err
+	   	}
+	*/
 	if ok, err := v.PodSelector.isValid(&p.PodSelector); !ok {
 		return false, err
 	}
@@ -66,6 +78,18 @@ func (v *NetworkPolicyValidator) isValid(p *networkingv1.NetworkPolicySpec) (boo
 	return true, nil
 
 }
+
+/* func (v *NetworkPolicyValidator) isValidPolicyTypes(n *[]networkingv1.PolicyType) (bool, error) {
+
+	for _, i := range *n {
+		for _, j := range v.PolicyTypes {
+			fmt.Println(i)
+			fmt.Println(j)
+		}
+
+	}
+	return false, nil
+} */
 
 // NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods
 type NetworkPolicyIngressRule struct {
@@ -203,7 +227,7 @@ func (v *Except) isValid(p *networkingv1.IPBlock) (bool, error) {
 		}
 	}
 
-	return false, nil
+	return true, nil
 }
 
 // NetworkPolicyPeer describes a peer to allow traffic from. Only certain combinations of
@@ -286,175 +310,4 @@ func (v *MatchLabels) isValid(p map[string]string) (bool, error) {
 
 	return true, nil
 
-}
-
-// RuleName is ..
-type RuleName string
-
-// Rules
-const (
-	MaskBitsSize RuleName = "MaskBitsSize"
-	ListSize     RuleName = "ListSize"
-	LabelValues  RuleName = "LabelValues"
-	LabelCount   RuleName = "LabelCount"
-)
-
-// Rule is ...
-type Rule struct {
-	Name     RuleName           `json:"name"`
-	Operator Operator           `json:"operator"`
-	Value    intstr.IntOrString `json:"value"`
-}
-
-func (v *Rule) isValid(p interface{}) (bool, error) {
-
-	switch v.Name {
-
-	case MaskBitsSize:
-		return v.isValidMaskBitsSize(p.(int))
-	case ListSize:
-		return v.isValidListSize(p.([]string))
-	case LabelValues:
-		return true, nil
-
-	}
-	return true, nil
-}
-
-func (v *Rule) isValidLabelCount(labels map[string]string) (bool, error) {
-
-	ok, err := operatorExec(len(labels), v.Value.IntValue(), v.Operator)
-	if err != nil {
-		return false, err
-	}
-
-	if !ok {
-		return false, fmt.Errorf("InvalidLabelCount - the numbers os labels must be %s %v",
-			v.Operator, v.Value.IntValue())
-	}
-
-	return true, nil
-
-}
-
-func (v *Rule) isValidListSize(l []string) (bool, error) {
-
-	ok, err := operatorExec(len(l), v.Value.IntValue(), v.Operator)
-	if err != nil {
-		return false, err
-	}
-
-	if !ok {
-		return false, fmt.Errorf(
-			"error InvalidListSize, list size must be %s %v - %s",
-			v.Operator, v.Value.IntValue(), err)
-	}
-
-	return true, nil
-
-}
-
-func (v *Rule) isValidMaskBitsSize(s int) (bool, error) {
-
-	if ok, err := operatorExec(s, v.Value.IntValue(), v.Operator); !ok {
-		return false, fmt.Errorf(
-			"error InvalidNaskBitsSize, mask size must be %s %v - %s",
-			v.Operator, v.Value.IntValue(), err)
-	}
-
-	return true, nil
-
-}
-
-// Operator is validation type abstraction
-type Operator string
-
-// All operators available
-const (
-	OpIn           Operator = "In"
-	OpNotIn        Operator = "NotIn"
-	OpExists       Operator = "Exists"
-	OpDoesNotExist Operator = "DoesNotExist"
-	OpEq           Operator = "Equals"
-	OpGt           Operator = "Gt"
-	OpLt           Operator = "Lt"
-	OpGe           Operator = "Ge"
-	OpLe           Operator = "Le"
-)
-
-func operatorExec(x, y interface{}, o Operator) (bool, error) {
-
-	switch o {
-
-	case OpIn:
-
-		fmt.Println("a")
-
-	case OpNotIn:
-
-		fmt.Println("b")
-
-	case OpExists:
-
-		fmt.Println("c")
-
-	case OpDoesNotExist:
-
-		fmt.Println("d")
-
-	case OpGt:
-
-		return opGtExec(x.(int), y.(int))
-
-	case OpLt:
-
-		return opLtExec(x.(int), y.(int))
-
-	case OpEq:
-
-		return opEqExec(x.(int), y.(int)), nil
-
-	}
-
-	return false, nil
-}
-
-func opEqExec(x, y int) bool {
-
-	if x == y {
-		return true
-	}
-	return false
-}
-
-func opGtExec(x, y int) (bool, error) {
-
-	if x > y {
-		return true, nil
-	}
-	return false, nil
-}
-
-func opLtExec(x, y int) (bool, error) {
-
-	if x < y {
-		return true, nil
-	}
-	return false, nil
-}
-
-func opGeExec(x, y int) bool {
-
-	if x >= y {
-		return true
-	}
-	return false
-}
-
-func opLeExec(x, y int) bool {
-
-	if x <= y {
-		return true
-	}
-	return false
 }
