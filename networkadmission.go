@@ -1,7 +1,7 @@
 package main
 
 import (
-	"net"
+	"fmt"
 	"regexp"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -18,21 +18,23 @@ func (v *NetworkAdmissionValidator) IsValid(p *networkingv1.NetworkPolicy) (bool
 
 	for _, i := range v.NetworkValidator {
 
-		r, err := regexp.Compile(i.Namespace)
+		isFiltered, err := i.Namespace.isFiltered(p.Namespace)
 		if err != nil {
 
 			return false, err
 
 		}
+		if !isFiltered {
 
-		if r.Match([]byte(p.Namespace)) {
-
-			if ok, err := i.isValid(&p.Spec); !ok {
-
-				return false, err
-
-			}
+			return true, err
 		}
+
+		if ok, err := i.isValid(&p.Spec); !ok {
+
+			return false, err
+
+		}
+
 	}
 	return true, nil
 
@@ -50,7 +52,7 @@ const (
 
 // NetworkPolicyValidator provides the specification of a NetworkPolicy
 type NetworkPolicyValidator struct {
-	Namespace   string                   `json:"namespace,omitempty"`
+	Namespace   Namespace                `json:"namespace,omitempty"`
 	Ingress     NetworkPolicyIngressRule `json:"ingress,omitempty"`
 	Egress      NetworkPolicyEgressRule  `json:"egress,omitempty"`
 	PolicyTypes []PolicyType             `json:"policyTypes,omitempty"`
@@ -59,10 +61,10 @@ type NetworkPolicyValidator struct {
 
 func (v *NetworkPolicyValidator) isValid(p *networkingv1.NetworkPolicySpec) (bool, error) {
 
-	/* 	if ok, err := v.isValidPolicyTypes(&p.PolicyTypes); !ok {
-	   		return false, err
-	   	}
-	*/
+	if ok, err := v.isValidPolicyTypes(&p.PolicyTypes); !ok {
+		return false, err
+	}
+
 	if ok, err := v.PodSelector.isValid(&p.PodSelector); !ok {
 		return false, err
 	}
@@ -79,17 +81,44 @@ func (v *NetworkPolicyValidator) isValid(p *networkingv1.NetworkPolicySpec) (boo
 
 }
 
-/* func (v *NetworkPolicyValidator) isValidPolicyTypes(n *[]networkingv1.PolicyType) (bool, error) {
+// Namespace is a namespace abstraction containing rules
+type Namespace struct {
+	MatchName string `json:"matchName,omitempty"`
+}
+
+func (v *Namespace) isFiltered(n string) (bool, error) {
+
+	r, err := regexp.Compile(v.MatchName)
+	if err != nil {
+		return false, err
+	}
+
+	if r.MatchString(n) {
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (v *NetworkPolicyValidator) isValidPolicyTypes(n *[]networkingv1.PolicyType) (bool, error) {
 
 	for _, i := range *n {
+		var c bool
 		for _, j := range v.PolicyTypes {
-			fmt.Println(i)
-			fmt.Println(j)
-		}
 
+			if string(i) == string(j) {
+
+				c = true
+
+			}
+		}
+		if !c {
+			return false, fmt.Errorf("PolicyTpe %s is not allowed for this namespace", string(i))
+		}
 	}
-	return false, nil
-} */
+	return true, nil
+}
 
 // NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods
 type NetworkPolicyIngressRule struct {
@@ -177,15 +206,17 @@ type CIDR struct {
 
 func (c *CIDR) isValid(p *networkingv1.IPBlock) (bool, error) {
 
-	_, network, _ := net.ParseCIDR(p.CIDR)
-	maskBits, _ := network.Mask.Size()
-
 	for _, r := range c.Rules {
 
 		switch r.Name {
 
 		case MaskBitsSize:
-			return r.isValidMaskBitsSize(maskBits)
+
+			var c []string
+
+			c = append(c, p.CIDR)
+
+			return r.isValidMaskBitsSize(c)
 
 		}
 	}
@@ -211,18 +242,7 @@ func (v *Except) isValid(p *networkingv1.IPBlock) (bool, error) {
 
 		case MaskBitsSize:
 
-			for _, n := range p.Except {
-
-				_, network, _ := net.ParseCIDR(n)
-				maskBits, _ := network.Mask.Size()
-
-				if ok, err := r.isValid(maskBits); !ok {
-
-					return false, err
-
-				}
-
-			}
+			return r.isValidMaskBitsSize(p.Except)
 
 		}
 	}

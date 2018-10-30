@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -21,35 +22,28 @@ const (
 type Rule struct {
 	Name     RuleName           `json:"name"`
 	Operator Operator           `json:"operator"`
+	Key      string             `json:"key"`
 	Value    intstr.IntOrString `json:"value"`
 }
 
-func (v *Rule) isValid(p interface{}) (bool, error) {
+func (v *Rule) isValidMaskBitsSize(l []string) (bool, error) {
 
-	switch v.Name {
+	for _, i := range l {
 
-	case MaskBitsSize:
-		return v.isValidMaskBitsSize(p.(int))
-	case ListSize:
-		return v.isValidListSize(p.([]string))
-	case LabelValues:
-		return true, nil
+		_, network, _ := net.ParseCIDR(i)
+		m, _ := network.Mask.Size()
 
-	}
-	return true, nil
-}
+		ok, err := operatorExec(m, v.Value.IntValue(), v.Operator)
+		if err != nil {
+			return false, err
+		}
 
-func (v *Rule) isValidLabelCount(labels map[string]string) (bool, error) {
+		if !ok {
+			return false, fmt.Errorf(
+				"error InvalidNaskBitsSize: mask size must be %s %v",
+				v.Operator, v.Value.IntValue())
+		}
 
-	ok, err := operatorExec(len(labels), v.Value.IntValue(), v.Operator)
-	if err != nil {
-		return false, err
-	}
-
-	if !ok {
-		return false, fmt.Errorf(
-			"error InvalidLabelCount: the numbers of labels must be %s %v",
-			v.Operator, v.Value.IntValue())
 	}
 
 	return true, nil
@@ -73,16 +67,33 @@ func (v *Rule) isValidListSize(l []string) (bool, error) {
 
 }
 
-func (v *Rule) isValidMaskBitsSize(s int) (bool, error) {
+func (v *Rule) isValidLabelValues(labels map[string]string) (bool, error) {
 
-	ok, err := operatorExec(s, v.Value.IntValue(), v.Operator)
+	ok, err := operatorExec(len(labels), v.Value.IntValue(), v.Operator)
 	if err != nil {
 		return false, err
 	}
 
 	if !ok {
 		return false, fmt.Errorf(
-			"error InvalidNaskBitsSize: mask size must be %s %v",
+			"error InvalidLabelCount: the numbers of labels must be %s %v",
+			v.Operator, v.Value.IntValue())
+	}
+
+	return true, nil
+
+}
+
+func (v *Rule) isValidLabelCount(labels map[string]string) (bool, error) {
+
+	ok, err := operatorExec(len(labels), v.Value.IntValue(), v.Operator)
+	if err != nil {
+		return false, err
+	}
+
+	if !ok {
+		return false, fmt.Errorf(
+			"error InvalidLabelCount: the numbers of labels must be %s %v",
 			v.Operator, v.Value.IntValue())
 	}
 
