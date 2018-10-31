@@ -16,6 +16,7 @@ const (
 	ListSize     RuleName = "ListSize"
 	LabelValues  RuleName = "LabelValues"
 	LabelCount   RuleName = "LabelCount"
+	PortNumber   RuleName = "PortNumber"
 )
 
 // Rule is ...
@@ -26,21 +27,38 @@ type Rule struct {
 	Value    intstr.IntOrString `json:"value"`
 }
 
-func (v *Rule) isValidMaskBitsSize(l []string) (bool, error) {
+func (v *Rule) isValidMask(c string) (bool, error) {
+
+	_, network, _ := net.ParseCIDR(c)
+	m, _ := network.Mask.Size()
+
+	ok, err := operatorExec(m, v.Value.IntValue(), v.Operator)
+	if err != nil {
+		return false, err
+	}
+
+	if !ok {
+		return false, fmt.Errorf(
+			"error InvalidMaskSize: mask size must be %s %v",
+			v.Operator, v.Value.IntValue())
+	}
+
+	return true, nil
+
+}
+
+func (v *Rule) isValidMaskList(l []string) (bool, error) {
 
 	for _, i := range l {
 
-		_, network, _ := net.ParseCIDR(i)
-		m, _ := network.Mask.Size()
-
-		ok, err := operatorExec(m, v.Value.IntValue(), v.Operator)
+		ok, err := v.isValidMask(i)
 		if err != nil {
 			return false, err
 		}
 
 		if !ok {
 			return false, fmt.Errorf(
-				"error InvalidNaskBitsSize: mask size must be %s %v",
+				"error InvalidMaskSize: mask size must be %s %v",
 				v.Operator, v.Value.IntValue())
 		}
 
@@ -50,9 +68,9 @@ func (v *Rule) isValidMaskBitsSize(l []string) (bool, error) {
 
 }
 
-func (v *Rule) isValidListSize(l []string) (bool, error) {
+func (v *Rule) isValidListSize(s int) (bool, error) {
 
-	ok, err := operatorExec(len(l), v.Value.IntValue(), v.Operator)
+	ok, err := operatorExec(s, v.Value.IntValue(), v.Operator)
 	if err != nil {
 		return false, err
 	}
@@ -60,6 +78,23 @@ func (v *Rule) isValidListSize(l []string) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf(
 			"error InvalidListSize: list size must be %s %v ",
+			v.Operator, v.Value.IntValue())
+	}
+
+	return true, nil
+
+}
+
+func (v *Rule) isValidPort(s int) (bool, error) {
+
+	ok, err := operatorExec(s, v.Value.IntValue(), v.Operator)
+	if err != nil {
+		return false, err
+	}
+
+	if !ok {
+		return false, fmt.Errorf(
+			"error InvalidPortNumber: port number must be %s %v ",
 			v.Operator, v.Value.IntValue())
 	}
 

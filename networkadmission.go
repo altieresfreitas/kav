@@ -55,17 +55,17 @@ type NetworkPolicyValidator struct {
 	Namespace   Namespace                `json:"namespace,omitempty"`
 	Ingress     NetworkPolicyIngressRule `json:"ingress,omitempty"`
 	Egress      NetworkPolicyEgressRule  `json:"egress,omitempty"`
-	PolicyTypes []PolicyType             `json:"policyTypes,omitempty"`
+	PolicyTypes []PolicyType             `json:"allowedPolicyTypes,omitempty"`
 	PodSelector PodSelector              `json:"podSelector,omitempty"`
 }
 
 func (v *NetworkPolicyValidator) isValid(p *networkingv1.NetworkPolicySpec) (bool, error) {
 
-	if ok, err := v.isValidPolicyTypes(&p.PolicyTypes); !ok {
+	if ok, err := v.PodSelector.isValid(&p.PodSelector); !ok {
 		return false, err
 	}
 
-	if ok, err := v.PodSelector.isValid(&p.PodSelector); !ok {
+	if ok, err := v.isValidPolicyTypes(&p.PolicyTypes); !ok {
 		return false, err
 	}
 
@@ -134,6 +134,10 @@ func (v *NetworkPolicyIngressRule) isValid(p *[]networkingv1.NetworkPolicyIngres
 			return false, err
 		}
 
+		if ok, err := v.Ports.isValid(e.Ports); !ok {
+			return false, err
+		}
+
 	}
 
 	return true, nil
@@ -141,8 +145,8 @@ func (v *NetworkPolicyIngressRule) isValid(p *[]networkingv1.NetworkPolicyIngres
 
 // NetworkPolicyEgressRule describes a particular set of traffic that is allowed out of pods
 type NetworkPolicyEgressRule struct {
-	Ports []NetworkPolicyPort `json:"ports,omitempty"`
-	To    NetworkPolicyPeer   `json:"to,omitempty"`
+	Ports NetworkPolicyPort `json:"ports,omitempty"`
+	To    NetworkPolicyPeer `json:"to,omitempty"`
 }
 
 func (v *NetworkPolicyEgressRule) isValid(p *[]networkingv1.NetworkPolicyEgressRule) (bool, error) {
@@ -153,6 +157,10 @@ func (v *NetworkPolicyEgressRule) isValid(p *[]networkingv1.NetworkPolicyEgressR
 			return false, err
 		}
 
+		if ok, err := v.Ports.isValid(e.Ports); !ok {
+			return false, err
+		}
+
 	}
 
 	return true, nil
@@ -160,24 +168,44 @@ func (v *NetworkPolicyEgressRule) isValid(p *[]networkingv1.NetworkPolicyEgressR
 
 // NetworkPolicyPort describes a port to allow traffic on
 type NetworkPolicyPort struct {
-	Protocol Protocol `json:"protocol,omitempty"`
-	Port     Port     `json:"port,omitempty"`
+	Rules []Rule `json:"rules"`
 }
 
-func (p *NetworkPolicyPort) isValid(er *networkingv1.NetworkPolicyPort) (bool, error) {
+func (v *NetworkPolicyPort) isValid(p []networkingv1.NetworkPolicyPort) (bool, error) {
+
+	for _, r := range v.Rules {
+
+		switch r.Name {
+
+		case ListSize:
+
+			if ok, err := r.isValidListSize(len(p)); err != nil || !ok {
+				return false, err
+			}
+
+		case PortNumber:
+
+			if ok, err := isValidPortNumber(p, r); err != nil || !ok {
+				return false, err
+			}
+
+		}
+	}
 
 	return true, nil
 
 }
 
-// Protocol ssad
-type Protocol struct {
-	Rules []Rule `json:"rules"`
-}
+func isValidPortNumber(p []networkingv1.NetworkPolicyPort, r Rule) (bool, error) {
 
-// Port is
-type Port struct {
-	Rules []Rule `json:"rules"`
+	for _, i := range p {
+
+		if ok, err := r.isValidPort(i.Port.IntValue()); !ok {
+			return false, err
+		}
+
+	}
+	return true, nil
 }
 
 // IPBlock describes a particular CIDR (Ex. "192.168.1.1/24") that is allowed to the pods
@@ -212,11 +240,7 @@ func (c *CIDR) isValid(p *networkingv1.IPBlock) (bool, error) {
 
 		case MaskBitsSize:
 
-			var c []string
-
-			c = append(c, p.CIDR)
-
-			return r.isValidMaskBitsSize(c)
+			return r.isValidMask(p.CIDR)
 
 		}
 	}
@@ -238,11 +262,11 @@ func (v *Except) isValid(p *networkingv1.IPBlock) (bool, error) {
 
 		case ListSize:
 
-			return r.isValidListSize(p.Except)
+			return r.isValidListSize(len(p.Except))
 
 		case MaskBitsSize:
 
-			return r.isValidMaskBitsSize(p.Except)
+			return r.isValidMaskList(p.Except)
 
 		}
 	}

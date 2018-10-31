@@ -1,0 +1,76 @@
+networkValidator:
+- namespace:
+    matchName: "^teste-namespace$"
+  allowedPolicyTypes:
+  - Egress
+  - Ingress
+  podSelector:
+    matchLabels:
+      rules:
+      - name: "LabelCount"
+        operator: "Gt"
+        value: 0
+      - name: "LabelValues"
+        operator: "DoesNotExist"
+        value: ""
+  ingress:
+    from:
+      ipBlock:
+        cidr:
+          rules:
+          - name: "MaskBitsSize"
+            operator: "Gt"
+            value: "24"
+        except:
+          rules:
+          - name: "MaskBitsSize"
+            operator: "Gt"
+            value: 28
+          - name: "ListSize"
+            operator: "Ge"
+            value: 2
+      podSelector:
+        matchLabels:
+          rules:
+          - name: "LabelCount"
+            operator: "Gt"
+            value: "0"
+      namespaceSelector:
+        matchLabels:
+          rules:
+          - name: "LabelCount"
+            operator: "Gt"
+            value: "0"
+    ports:
+      rules:
+      - name: "PortNumber"
+        operator: "Ge"
+        value: 5000
+  egress:
+    to:
+    - ipBlock:
+        cidr:
+          rules:
+          - name: "MaskBitsSize"
+            operator: "Gt"
+            value: "14"
+    - podSelector:
+        matchLabels:
+          rules:
+          - name: "LabelCount"
+            operator: "Gt"
+            value: 0
+    - namespaceSelector:
+        matchLabels:
+          rules:
+          - name: "LabelCount"
+            operator: "Gt"
+            value: 0
+    ports:
+      rules:
+      - name: "PortNumber"
+        operator: "Ge"
+        value: 5000
+      - name: "ListSize"
+        operator: "Ge"
+        value: 1
