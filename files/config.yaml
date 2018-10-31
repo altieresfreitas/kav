@@ -20,7 +20,7 @@ networkValidator:
           rules:
           - name: "MaskBitsSize"
             operator: "Gt"
-            value: "24"
+            value: "31"
         except:
           rules:
           - name: "MaskBitsSize"

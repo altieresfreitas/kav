@@ -7,12 +7,13 @@ import (
 	"log"
 	"os"
 
+	"github.com/4ltieres/k8s-opol/pkg"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func getNetworkValidator() *NetworkAdmissionValidator {
-	var policyFile = "config.yaml" //flags.Configfile
+func getNetworkValidator() *validator.NetworkAdmissionValidator {
+	var policyFile = "files/config.yaml" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
 	if err != nil {
@@ -31,14 +32,14 @@ func getNetworkValidator() *NetworkAdmissionValidator {
 		fmt.Println(err)
 	}
 
-	policy := &NetworkAdmissionValidator{}
+	policy := &validator.NetworkAdmissionValidator{}
 	json.Unmarshal(jsonFile, &policy)
 
 	return policy
 }
 
 func getNetworkPolicy() *networkingv1.NetworkPolicy {
-	var policyFile = "policy.yaml" //flags.Configfile
+	var policyFile = "files/networkpolicy.yaml" //flags.Configfile
 
 	_, err := os.Stat(policyFile)
 	if err != nil {
