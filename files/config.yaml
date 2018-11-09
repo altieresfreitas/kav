@@ -1,6 +1,4 @@
 networkValidator:
-- namespace:
-    matchName: "^teste-namespace$"
   allowedPolicyTypes:
   - Egress
   - Ingress
@@ -20,12 +18,12 @@ networkValidator:
           rules:
           - name: "MaskBitsSize"
             operator: "Gt"
-            value: "31"
+            value: 29
         except:
           rules:
           - name: "MaskBitsSize"
             operator: "Gt"
-            value: 28
+            value: 29
           - name: "ListSize"
             operator: "Ge"
             value: 2

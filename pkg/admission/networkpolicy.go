@@ -1,8 +1,7 @@
-package validator
+package admission
 
 import (
 	"fmt"
-	"regexp"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,32 +9,18 @@ import (
 
 // NetworkAdmissionValidator is a NetworkPolicy abstraction to isValid objects
 type NetworkAdmissionValidator struct {
-	NetworkValidator []NetworkPolicyValidator `json:"networkValidator,omitempty"`
+	NetworkValidator NetworkPolicyValidator `json:"networkValidator,omitempty"`
 }
 
 // IsValid will compare a received network policy object with NetworkadmissionRules.
 func (v *NetworkAdmissionValidator) IsValid(p *networkingv1.NetworkPolicy) (bool, error) {
 
-	for _, i := range v.NetworkValidator {
+	if ok, err := v.NetworkValidator.isValid(&p.Spec); !ok {
 
-		isFiltered, err := i.Namespace.isFiltered(p.Namespace)
-		if err != nil {
-
-			return false, err
-
-		}
-		if !isFiltered {
-
-			return true, err
-		}
-
-		if ok, err := i.isValid(&p.Spec); !ok {
-
-			return false, err
-
-		}
+		return false, err
 
 	}
+
 	return true, nil
 
 }
@@ -52,7 +37,6 @@ const (
 
 // NetworkPolicyValidator provides the specification of a NetworkPolicy
 type NetworkPolicyValidator struct {
-	Namespace   Namespace                `json:"namespace,omitempty"`
 	Ingress     NetworkPolicyIngressRule `json:"ingress,omitempty"`
 	Egress      NetworkPolicyEgressRule  `json:"egress,omitempty"`
 	PolicyTypes []PolicyType             `json:"allowedPolicyTypes,omitempty"`
@@ -79,26 +63,6 @@ func (v *NetworkPolicyValidator) isValid(p *networkingv1.NetworkPolicySpec) (boo
 
 	return true, nil
 
-}
-
-// Namespace is a namespace abstraction containing rules
-type Namespace struct {
-	MatchName string `json:"matchName,omitempty"`
-}
-
-func (v *Namespace) isFiltered(n string) (bool, error) {
-
-	r, err := regexp.Compile(v.MatchName)
-	if err != nil {
-		return false, err
-	}
-
-	if r.MatchString(n) {
-
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func (v *NetworkPolicyValidator) isValidPolicyTypes(n *[]networkingv1.PolicyType) (bool, error) {
