@@ -14,12 +14,12 @@ spec:
   ingress:
   - from:
     - ipBlock:
-        cidr: 172.17.0.0/25
+        cidr: 172.17.0.0/28
         except:
         - 172.17.1.0/29
         - 172.17.1.0/29
     - ipBlock:
-        cidr: 172.17.0.0/25
+        cidr: 172.17.0.0/29
         except:
         - 172.17.1.0/29
         - 172.17.1.0/29
@@ -35,7 +35,7 @@ spec:
   egress:
   - to:
     - ipBlock:
-        cidr: 10.0.0.0/25
+        cidr: 10.0.0.0/29
     ports:
     - protocol: TCP
       port: 5978

@@ -1,4 +1,4 @@
-networkValidator:
+networkPolicyValidator:
   allowedPolicyTypes:
   - Egress
   - Ingress
@@ -17,12 +17,12 @@ networkValidator:
         cidr:
           rules:
           - name: "MaskBitsSize"
-            operator: "Gt"
+            operator: "Ge"
             value: 29
         except:
           rules:
           - name: "MaskBitsSize"
-            operator: "Gt"
+            operator: "Ge"
             value: 29
           - name: "ListSize"
             operator: "Ge"
@@ -46,29 +46,34 @@ networkValidator:
         value: 5000
   egress:
     to:
-    - ipBlock:
+      ipBlock:
         cidr:
           rules:
           - name: "MaskBitsSize"
-            operator: "Gt"
-            value: "14"
-    - podSelector:
+            operator: "Ge"
+            value: 29
+        except:
+          rules:
+          - name: "MaskBitsSize"
+            operator: "Ge"
+            value: 29
+          - name: "ListSize"
+            operator: "Ge"
+            value: 2
+      podSelector:
         matchLabels:
           rules:
           - name: "LabelCount"
             operator: "Gt"
-            value: 0
-    - namespaceSelector:
+            value: "0"
+      namespaceSelector:
         matchLabels:
           rules:
           - name: "LabelCount"
             operator: "Gt"
-            value: 0
+            value: "0"
     ports:
       rules:
       - name: "PortNumber"
         operator: "Ge"
         value: 5000
-      - name: "ListSize"
-        operator: "Ge"
-        value: 1

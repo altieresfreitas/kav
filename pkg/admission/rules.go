@@ -118,20 +118,3 @@ func (v *Rule) isValidLabelValues(labels map[string]string) (bool, error) {
 	return true, nil
 
 }
-
-func (v *Rule) isValidLabelCount(labels map[string]string) (bool, error) {
-
-	ok, err := operatorExec(len(labels), v.Value.IntValue(), v.Operator)
-	if err != nil {
-		return false, err
-	}
-
-	if !ok {
-		return false, fmt.Errorf(
-			"error InvalidLabelCount: the numbers of labels must be %s %v",
-			v.Operator, v.Value.IntValue())
-	}
-
-	return true, nil
-
-}

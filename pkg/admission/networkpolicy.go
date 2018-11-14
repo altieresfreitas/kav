@@ -1,27 +1,59 @@
 package admission
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
+	"github.com/golang/glog"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // NetworkAdmissionValidator is a NetworkPolicy abstraction to isValid objects
 type NetworkAdmissionValidator struct {
-	NetworkValidator NetworkPolicyValidator `json:"networkValidator,omitempty"`
+	NetworkPolicyValidator NetworkPolicyValidator `json:"networkPolicyValidator,omitempty"`
 }
 
 // IsValid will compare a received network policy object with NetworkadmissionRules.
 func (v *NetworkAdmissionValidator) IsValid(p *networkingv1.NetworkPolicy) (bool, error) {
 
-	if ok, err := v.NetworkValidator.isValid(&p.Spec); !ok {
+	if ok, err := v.NetworkPolicyValidator.isValid(&p.Spec); !ok {
 
 		return false, err
 
 	}
 
 	return true, nil
+
+}
+
+//NewAdmissionValidator creates a new admission validator
+func NewAdmissionValidator(c string) *NetworkAdmissionValidator {
+
+	_, err := os.Stat(c)
+	if err != nil {
+		glog.Error(fmt.Errorf("Config file is missing: %s ", c))
+	}
+
+	yamlFile, err := os.Open(c)
+	if err != nil {
+		glog.Error(err)
+	}
+
+	defer yamlFile.Close()
+	byteValue, _ := ioutil.ReadAll(yamlFile)
+	jsonFile, err := yaml.ToJSON(byteValue)
+	if err != nil {
+		glog.Error(err)
+	}
+
+	validator := &NetworkAdmissionValidator{}
+	json.Unmarshal(jsonFile, &validator)
+
+	return validator
 
 }
 
@@ -196,6 +228,8 @@ type CIDR struct {
 	Rules []Rule `json:"rules"`
 }
 
+// supported rules to check
+// MaskBitsSize
 func (c *CIDR) isValid(p *networkingv1.IPBlock) (bool, error) {
 
 	for _, r := range c.Rules {
@@ -218,6 +252,9 @@ type Except struct {
 	Rules []Rule `json:"rules"`
 }
 
+// supported rules to check
+// ListSize
+// MaskBitsSize
 func (v *Except) isValid(p *networkingv1.IPBlock) (bool, error) {
 
 	for _, r := range v.Rules {
@@ -304,6 +341,8 @@ type MatchLabels struct {
 	Rules []Rule `json:"rules"`
 }
 
+// supported rules to check
+// LabelCount
 func (v *MatchLabels) isValid(p map[string]string) (bool, error) {
 
 	for _, r := range v.Rules {
@@ -311,7 +350,7 @@ func (v *MatchLabels) isValid(p map[string]string) (bool, error) {
 		switch r.Name {
 
 		case LabelCount:
-			return r.isValidLabelCount(p)
+			return r.isValidListSize(len(p))
 
 		}
 	}

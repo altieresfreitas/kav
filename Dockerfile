@@ -1,9 +1,11 @@
-FROM golang:alpine as builder
-RUN mkdir /build 
-ADD . /build/
-WORKDIR /build 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o main .
+
+FROM golang:1.11 as builder
+WORKDIR /go/src/github.com/4ltieres/k8s-opol
+COPY . ./
+RUN go get -u github.com/golang/dep/cmd/dep && dep ensure -v
+RUN CGO_ENABLED=0 GOOS=linux go build -o k8s-opol
+
 FROM scratch
-COPY --from=builder /build/main /app/
-WORKDIR /app
-CMD ["./main"]
+
+COPY --from=builder /go/src/github.com/4ltieres/k8s-opol/k8s-opol .
+CMD ["/k8s-opol"]
