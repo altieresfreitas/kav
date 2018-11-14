@@ -4,8 +4,6 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/4ltieres/k8s-opol/pkg/admission"
-
 	"github.com/4ltieres/k8s-opol/pkg/config"
 )
 
@@ -13,7 +11,6 @@ import (
 type Server struct {
 	HTTPServer *http.Server
 	Config     config.Config
-	Validator  *admission.NetworkAdmissionValidator
 }
 
 func (s *Server) serveNetworkPolicies(w http.ResponseWriter, r *http.Request) {
