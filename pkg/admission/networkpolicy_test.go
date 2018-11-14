@@ -48,6 +48,8 @@ func TestAdmissionValidator(t *testing.T) {
 		{"../../files/validator.yaml", "../../files/valpolicy.yaml", true},
 		{"../../files/validator.yaml", "../../files/invalid-cidr-ingress.yaml", false},
 		{"../../files/validator.yaml", "../../files/valid-cidr-ingress.yaml", true},
+		{"../../files/validator.yaml", "../../files/valid-podselector.yaml", true},
+		{"../../files/validator.yaml", "../../files/invalid-podselector.yaml", false},
 	}
 
 	for _, i := range tests {
