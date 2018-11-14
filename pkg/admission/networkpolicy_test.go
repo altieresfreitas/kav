@@ -2,11 +2,66 @@ package admission
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/golang/glog"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
+
+func newNetworkPolicy(c string) *networkingv1.NetworkPolicy {
+
+	_, err := os.Stat(c)
+	if err != nil {
+		glog.Error(fmt.Errorf("policy file is missing: %s ", c))
+	}
+
+	yamlFile, err := os.Open(c)
+	if err != nil {
+		glog.Error(err)
+	}
+
+	defer yamlFile.Close()
+	byteValue, _ := ioutil.ReadAll(yamlFile)
+	jsonFile, err := yaml.ToJSON(byteValue)
+	if err != nil {
+		glog.Error(err)
+	}
+
+	policy := &networkingv1.NetworkPolicy{}
+	json.Unmarshal(jsonFile, &policy)
+
+	return policy
+
+}
+func TestAdmissionValidator(t *testing.T) {
+	tests := []struct {
+		configfile string
+		policyFile string
+		expected   bool
+	}{
+		{"../../files/validator.yaml", "../../files/invpolicy.yaml", false},
+		{"../../files/validator.yaml", "../../files/valpolicy.yaml", true},
+		{"../../files/validator.yaml", "../../files/invalid-cidr-ingress.yaml", false},
+		{"../../files/validator.yaml", "../../files/valid-cidr-ingress.yaml", true},
+	}
+
+	for _, i := range tests {
+		v := NewAdmissionValidator(i.configfile)
+		p := newNetworkPolicy(i.policyFile)
+		expected := i.expected
+
+		if result, _ := v.IsValid(p); result != expected {
+			t.Errorf("result was %v and expected is %v", result, expected)
+		}
+
+	}
+
+}
 
 func TestCIDR(t *testing.T) {
 
