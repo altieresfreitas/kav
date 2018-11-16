@@ -4,7 +4,7 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/4ltieres/k8s-opol/pkg/config"
+	"github.com/4ltieres/karepol/pkg/config"
 )
 
 // Server is an abstraction

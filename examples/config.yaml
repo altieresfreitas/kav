@@ -6,11 +6,8 @@ networkPolicyValidator:
     matchLabels:
       rules:
       - name: "LabelCount"
-        operator: "Gt"
-        value: 0
-      - name: "LabelValues"
-        operator: "DoesNotExist"
-        value: ""
+        operator: "Ge"
+        value: 1
   ingress:
     from:
       ipBlock:

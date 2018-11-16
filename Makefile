@@ -1,5 +1,5 @@
 VERSION=v0.1
-APP_NAME=k8s-opol
+APP_NAME=karepol
 
 test:
 	@go test ./... -race -coverprofile=coverage.txt -covermode=atomic

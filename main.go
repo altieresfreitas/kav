@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/4ltieres/k8s-opol/pkg/server"
+	"github.com/4ltieres/karepol/pkg/server"
 	"github.com/golang/glog"
 )
 
